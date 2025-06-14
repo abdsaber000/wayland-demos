@@ -20,7 +20,6 @@ struct xdg_toplevel *toplevel;
 struct wl_seat *seat;
 struct wl_keyboard *keyboard;
 struct wl_pointer *pointer;
-struct wl_callback *callback;
 struct xdg_surface *xdg_surface;
 struct zxdg_exporter_v2 *exporter = NULL;
 struct zxdg_exported_v2 *exported = NULL;
@@ -85,6 +84,7 @@ void resize() {
     buffer = wl_shm_pool_create_buffer(pool, 0, width, height, width * 4,
                                        WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
+    pool = NULL;
     close(fd);
 }
 
@@ -124,41 +124,12 @@ void xdg_surface_configure(void *data, struct xdg_surface *xdg_surface,
         resize();
     }
     draw();
-
-    static int exported_once = 0;
-    if (!exported_once) {
-        exported = zxdg_exporter_v2_export_toplevel(exporter, surface);
-        zxdg_exported_v2_add_listener(exported, &exported_listener, NULL);
-        exported_once = 1;
-    }
 }
 
 struct xdg_surface_listener xdg_surface_listener = {
     .configure = xdg_surface_configure,
 };
 
-struct wl_callback_listener callback_listener;
-
-void callback_done(void *data, struct wl_callback *callback,
-                   uint32_t callback_data) {
-    wl_callback_destroy(callback);
-
-    if (close_flag) {
-        return;
-    }
-
-    callback = wl_surface_frame(surface);
-    if (!callback) {
-        fprintf(stderr, "Failed to create callback\n");
-        return;
-    }
-    wl_callback_add_listener(callback, &callback_listener, NULL);
-
-    color++;
-    draw();
-}
-
-struct wl_callback_listener callback_listener = {.done = callback_done};
 
 void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel,
                             int32_t new_width, int32_t new_height,
@@ -314,48 +285,58 @@ struct wl_registry_listener listener = {
 };
 
 void clean_up() {
-    if (callback) {
-        wl_callback_destroy(callback);
-    }
+    printf("in clean up\n");
+    fflush(stdout);
+    
     if (exported) {
         zxdg_exported_v2_destroy(exported);
+        exported = NULL;
     }
     if (toplevel) {
         xdg_toplevel_destroy(toplevel);
+        toplevel = NULL;
     }
     if (xdg_surface) {
         xdg_surface_destroy(xdg_surface);
+        xdg_surface = NULL;
     }
     if (surface) {
         wl_surface_destroy(surface);
+        surface = NULL;
     }
     if (buffer) {
         wl_buffer_destroy(buffer);
+        buffer = NULL;
     }
     if (shm_data) {
         munmap(shm_data, width * height * 4);
+        shm_data = NULL;
     }
     if (keyboard) {
         wl_keyboard_destroy(keyboard);
+        keyboard = NULL;
     }
     if (pointer) {
         wl_pointer_destroy(pointer);
+        pointer = NULL;
     }
     if (seat) {
         wl_seat_destroy(seat);
+        seat = NULL;
     }
     if (exporter) {
         zxdg_exporter_v2_destroy(exporter);
+        exporter = NULL;
     }
     if (exported_handle) {
         free(exported_handle);
+        exported_handle = NULL;
     }
 }
 
 void window_init() {
     surface = wl_compositor_create_surface(compositor);
-    callback = wl_surface_frame(surface);
-    wl_callback_add_listener(callback, &callback_listener, NULL);
+    
     xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, surface);
     xdg_surface_add_listener(xdg_surface, &xdg_surface_listener, NULL);
 
@@ -376,8 +357,8 @@ int main() {
     wl_display_roundtrip(display);
 
     window_init();
-    // exported = zxdg_exporter_v2_export_toplevel(exporter, surface);
-    // zxdg_exported_v2_add_listener(exported, &exported_listener, NULL);
+    exported = zxdg_exporter_v2_export_toplevel(exporter, surface);
+    zxdg_exported_v2_add_listener(exported, &exported_listener, NULL);
 
     wl_surface_commit(surface);
 
@@ -386,8 +367,16 @@ int main() {
             break;
         }
     }
+    wl_display_roundtrip(display);
+    if (surface && buffer) {
+        wl_surface_attach(surface, NULL, 0, 0);
+        wl_surface_commit(surface);
+        wl_display_roundtrip(display);
+    }
     clean_up();
     wl_registry_destroy(registry);
     wl_display_disconnect(display);
+    printf("reached the end of exporter.\n");
+    fflush(stdout);
     return 0;
 }
