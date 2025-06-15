@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include <unistd.h>
 #include <wayland-client.h>
 
@@ -346,7 +347,14 @@ void window_init() {
 
 }
 
+void handle_sigint(int sig) {
+    printf("Received signal %d, cleaning up...\n", sig);
+    close_flag = 1;
+}
+
 int main() {
+    signal(SIGINT, handle_sigint);
+    signal(SIGTERM, handle_sigint);
     struct wl_display *display = wl_display_connect(NULL);
     if (display == NULL) {
         printf("Failed to connect to Wayland display\n");
