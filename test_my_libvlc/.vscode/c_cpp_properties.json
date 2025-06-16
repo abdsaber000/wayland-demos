@@ -4,7 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/home/abdo/Desktop/vlc/include",
+                "/home/abdo/Desktop/vlc/include/",
                 "/home/abdo/Desktop/vlc/include/vlc"
             ],
             "defines": [],
