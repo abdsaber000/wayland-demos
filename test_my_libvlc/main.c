@@ -1,5 +1,9 @@
-#include <vlc/vlc.h>
+#include <vlc/libvlc.h>
+#include <vlc/libvlc_picture.h>
+#include <vlc/libvlc_media.h>
+#include <vlc/libvlc_renderer_discoverer.h>
 #include <vlc/libvlc_media_player.h>
+#include <vlc/vlc.h>
 #include <wayland-client.h>
 #include <stdio.h>
 #include <assert.h>
@@ -55,6 +59,8 @@ void set_callbacks(void* data,
         void* reportOpaqu) {
     
     report_size_change = report_size_change_;
+
+    printf("report opaque %p\n", reportOpaqu);
     
 }
 
@@ -69,9 +75,9 @@ void handle_exported(void *data, struct zxdg_exported_v2 *zxdg_exported_v2,
     
     // assert(handle == handle2);
 
-    // if (libvlc_media_player_play(mp) != 0) {
-    //     fprintf(stderr, "Failed to play media\n");
-    // }
+    if (libvlc_media_player_play(mp) != 0) {
+        fprintf(stderr, "Failed to play media\n");
+    }
 
 }
 
@@ -180,7 +186,7 @@ void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel,
         height = new_height;
         resize();
     }
-    report_size_change(NULL, width, height);
+    // report_size_change(NULL, width, height);
 }
 
 void xdg_toplevel_close(void *data, struct xdg_toplevel *xdg_toplevel) {
@@ -206,9 +212,18 @@ void keyboard_enter(void *data, struct wl_keyboard *wl_keyboard,
 
 void keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
                   uint32_t time, uint32_t key, uint32_t state) {
+            
     if (key == 1) {  // escape character
         close_flag = 1;
-    } 
+    } else if (key == 30) {  // 'a' key
+        printf("'a' is pressed.\n");
+        assert(report_size_change != NULL);
+        report_size_change(NULL,200,200);
+    } else if (key == 32) {  // 'd' key
+        printf("'d' is pressed.\n");
+        assert(report_size_change != NULL);
+        report_size_change(NULL,800,800);
+    }
 }
 
 void keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard,
@@ -420,9 +435,11 @@ void init_vlc() {
         return ;
     }
 
-    libvlc_video_set_output_callbacks(mp, 
-        libvlc_video_engine_opengl, NULL, set_callbacks, NULL, NULL,
+    bool result = libvlc_video_set_output_callbacks(mp, 
+        libvlc_video_engine_disable, NULL, NULL, set_callbacks, NULL,
                                      NULL, NULL, NULL, NULL, NULL, NULL);
+
+    assert(result);
 }
 
 int main(int argc, char *argv[])
