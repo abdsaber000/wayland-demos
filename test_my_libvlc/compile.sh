@@ -7,3 +7,4 @@ LD_LIBRARY_PATH=/home/abdo/vlc/build-lib/install/lib
 # LD_LIBRARY_PATH=/home/abdo/Desktop/vlc/lib/.libs/:/home/abdo/Desktop/vlc/src/.libs/ 
 # VLC_PLUGIN_PATH=/home/abdo/Desktop/vlc/modules/.libs  
 gdb ./main
+# ./main

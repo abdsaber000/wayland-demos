@@ -23,6 +23,7 @@
 #include "xdg-shell-client-header.h"
 
 struct wl_display *display;
+struct wl_event_queue *queue;
 struct wl_compositor *compositor;
 struct wl_surface *surface;
 struct wl_buffer *buffer;
@@ -33,9 +34,6 @@ struct wl_seat *seat;
 struct wl_keyboard *keyboard;
 struct wl_pointer *pointer;
 struct xdg_surface *xdg_surface;
-struct zxdg_exporter_v2 *exporter = NULL;
-struct zxdg_exported_v2 *exported = NULL;
-char *exported_handle = NULL;
 uint8_t *shm_data;
 int16_t width = 500;
 int16_t height = 500;
@@ -49,6 +47,7 @@ libvlc_instance_t *vlc;
 libvlc_media_t *media;
 libvlc_media_player_t *mp;
 libvlc_video_output_resize_cb report_size_change;
+void *opaque;
 //////////////////
 
 void set_callbacks(void* data,
@@ -59,30 +58,10 @@ void set_callbacks(void* data,
         void* reportOpaqu) {
     
     report_size_change = report_size_change_;
-
+    opaque = reportOpaqu;
     printf("report opaque %p\n", reportOpaqu);
     
 }
-
-
-void handle_exported(void *data, struct zxdg_exported_v2 *zxdg_exported_v2,
-                     const char *handle) {
-    exported_handle = strdup(handle);
-    printf("Handle: %s\n", exported_handle);
-    libvlc_media_player_set_wayland_surface(mp, handle, display, surface);
-
-    // char* handle2 = libvlc_media_player_get_wayland_surface(mp);
-    
-    // assert(handle == handle2);
-
-    if (libvlc_media_player_play(mp) != 0) {
-        fprintf(stderr, "Failed to play media\n");
-    }
-
-}
-
-struct zxdg_exported_v2_listener exported_listener = {.handle =
-                                                          handle_exported};
 
 int allocate_shm(uint64_t size) {
     int8_t name[8];
@@ -186,7 +165,9 @@ void xdg_toplevel_configure(void *data, struct xdg_toplevel *xdg_toplevel,
         height = new_height;
         resize();
     }
-    // report_size_change(NULL, width, height);
+    if (report_size_change != NULL) {
+        report_size_change(opaque, width, height);
+    }
 }
 
 void xdg_toplevel_close(void *data, struct xdg_toplevel *xdg_toplevel) {
@@ -218,11 +199,11 @@ void keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
     } else if (key == 30) {  // 'a' key
         printf("'a' is pressed.\n");
         assert(report_size_change != NULL);
-        report_size_change(NULL,200,200);
+        report_size_change(opaque,200,200);
     } else if (key == 32) {  // 'd' key
         printf("'d' is pressed.\n");
         assert(report_size_change != NULL);
-        report_size_change(NULL,800,800);
+        report_size_change(opaque,800,800);
     }
 }
 
@@ -325,10 +306,7 @@ void registry_global(void *data, struct wl_registry *registry, uint32_t id,
     } else if (!strcmp(interface, wl_seat_interface.name)) {
         seat = wl_registry_bind(registry, id, &wl_seat_interface, 1);
         wl_seat_add_listener(seat, &seat_listener, NULL);
-    } else if (!strcmp(interface, zxdg_exporter_v2_interface.name)) {
-        exporter =
-            wl_registry_bind(registry, id, &zxdg_exporter_v2_interface, 1);
-    }
+    } 
 }
 
 void registry_global_remove(void *data, struct wl_registry *registry,
@@ -345,10 +323,7 @@ void clean_up() {
     printf("in clean up\n");
     fflush(stdout);
     
-    if (exported) {
-        zxdg_exported_v2_destroy(exported);
-        exported = NULL;
-    }
+   
     if (toplevel) {
         xdg_toplevel_destroy(toplevel);
         toplevel = NULL;
@@ -381,14 +356,7 @@ void clean_up() {
         wl_seat_destroy(seat);
         seat = NULL;
     }
-    if (exporter) {
-        zxdg_exporter_v2_destroy(exporter);
-        exporter = NULL;
-    }
-    if (exported_handle) {
-        free(exported_handle);
-        exported_handle = NULL;
-    }
+    
 }
 
 void window_init() {
@@ -435,11 +403,11 @@ void init_vlc() {
         return ;
     }
 
-    bool result = libvlc_video_set_output_callbacks(mp, 
-        libvlc_video_engine_disable, NULL, NULL, set_callbacks, NULL,
-                                     NULL, NULL, NULL, NULL, NULL, NULL);
+    libvlc_media_player_set_wayland_surface(mp, display, surface, set_callbacks);
 
-    assert(result);
+    if (libvlc_media_player_play(mp) != 0) {
+        fprintf(stderr, "Failed to play media\n");
+    }
 }
 
 int main(int argc, char *argv[])
@@ -449,25 +417,30 @@ int main(int argc, char *argv[])
     signal(SIGINT, handle_sigint);
     signal(SIGTERM, handle_sigint);
 
-    init_vlc();
-
+    
     display = wl_display_connect(NULL);
     if (display == NULL) {
         printf("Failed to connect to Wayland display\n");
         return -1;
     }
+    queue = wl_display_create_queue(display);
+    if (queue == NULL) {
+        printf("Failed to create Wayland event queue\n");
+        wl_display_disconnect(display);
+        return -1;
+    }
     struct wl_registry *registry = wl_display_get_registry(display);
+    
     wl_registry_add_listener(registry, &listener, NULL);
-    wl_display_roundtrip(display);
-
+    wl_proxy_set_queue((struct wl_proxy *)registry, queue);
+    wl_display_roundtrip_queue(display, queue);
+    
     window_init();
-    exported = zxdg_exporter_v2_export_toplevel(exporter, surface);
-    zxdg_exported_v2_add_listener(exported, &exported_listener, NULL);
-
     wl_surface_commit(surface);
+    
+    init_vlc();
 
-
-    while (wl_display_dispatch(display)) {
+    while (wl_display_dispatch_queue(display, queue) != -1) {
         if (close_flag) {
             break;
         }
