@@ -379,10 +379,10 @@ void handle_sigint(int sig) {
 void init_vlc() {
     char *file_path = "/mnt/01D97E09B2877ED0/anime/Hunter x Hunter (2011) - S01E148.mp4";
     const char* vlc_args[] = {
-        "-vvv"
+        // "-vvv"
     };
 
-    vlc = libvlc_new(1, vlc_args);
+    vlc = libvlc_new(0, vlc_args);
     if (!vlc) {
         fprintf(stderr, "Failed to create libVLC instance\n");
         return ;
