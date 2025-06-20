@@ -63,7 +63,9 @@ public:
     void play() { libvlc_media_player_play(m_mp); }
     
     void set_size(int width, int height) {
-        report_size_change(opaque, width, height);
+        if (report_size_change != NULL) {
+            report_size_change(opaque, width, height);
+        }
     }
 
 private:

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-find_package(Qt6 COMPONENTS Gui REQUIRED)
+find_package(Qt6 COMPONENTS Gui Widgets REQUIRED)
 # find_package(VLC REQUIRED)
 
 set(VLC_INSTALL_PATH "/home/abdo/vlc/build-lib/install")
@@ -34,6 +34,7 @@ add_executable(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     Qt6::Gui
+    Qt6::Widgets
     ${VLC_LIBRARIES}
 )
 

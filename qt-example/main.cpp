@@ -1,45 +1,52 @@
-#include <QGuiApplication>
-#include <QWindow>
+#include <QApplication>
+#include <QWidget>
+#include <QVBoxLayout>
 #include <QtWaylandClient/QtWaylandClient>
 #include <QtGui/6.9.0/QtGui/qpa/qplatformnativeinterface.h>
 #include "vlc_player.h"
-#include <cstdio>
+#include <iostream>
 
-
-class VLCWaylandWindow : public QWindow
+class VideoWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit VLCWaylandWindow(const QString &mediaPath, QWindow *parent = nullptr)
-        : QWindow(parent), m_mediaPath(mediaPath)
+    explicit VideoWidget(const QString &mediaPath, QWidget *parent = nullptr)
+        : QWidget(parent), m_mediaPath(mediaPath)
     {
-        setSurfaceType(QSurface::OpenGLSurface);
-        create();
+        // Ensure we have a native window
+        setAttribute(Qt::WA_NativeWindow);
     }
 
-    ~VLCWaylandWindow() {
+    ~VideoWidget() {
         if (m_player) {
             delete m_player;
         }
     }
 
 protected:
-    void exposeEvent(QExposeEvent *) override {
-        if (isExposed() && !m_initialized) {
+    void showEvent(QShowEvent *event) override {
+        QWidget::showEvent(event);
+        if (!m_initialized) {
             initializeVLC();
         }
     }
 
     void resizeEvent(QResizeEvent *event) override {
+        QWidget::resizeEvent(event);
         if (m_player) {
-            m_player->set_size(event->size().width(), event->size().height());
+            m_player->set_size(width(), height());
         }
-        QWindow::resizeEvent(event);
     }
 
 private:
     void initializeVLC() {
+        // Get the QWindow handle from this widget
+        QWindow *window = this->windowHandle();
+        if (!window) {
+            qFatal("Failed to get window handle");
+        }
+
         QPlatformNativeInterface *native = 
             QGuiApplication::platformNativeInterface();
         
@@ -47,14 +54,15 @@ private:
             native->nativeResourceForIntegration("wl_display"));
         
         wl_surface *surface = static_cast<wl_surface*>(
-            native->nativeResourceForWindow("surface", this));
-        std::cout << display << std::endl;
+            native->nativeResourceForWindow("surface", window));
+
+        std::cout << "Display: " << display << " Surface: " << surface << std::endl;
+        
         if (!display || !surface) {
             qFatal("Failed to get Wayland resources");
         }
 
-
-        m_player = new VlcPlayer(0, NULL);
+        m_player = new VlcPlayer(0, nullptr);
         m_player->open_media(m_mediaPath.toUtf8().constData());
         
         m_player->set_render_window({
@@ -63,8 +71,8 @@ private:
             .width = width(),
             .height = height()
         });
-
         m_player->play();
+        m_player->set_size(width(), height());
         
         m_initialized = true;
     }
@@ -76,19 +84,30 @@ private:
 
 int main(int argc, char *argv[])
 {
+    // Set Wayland environment
     qputenv("QT_QPA_PLATFORM", "wayland");
-    qputenv("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1");
+    // qputenv("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1");
     
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
 
     if (app.arguments().size() < 2) {
         qCritical("Usage: %s <media-file>", argv[0]);
         return 1;
     }
 
-    VLCWaylandWindow window(app.arguments().at(1));
-    window.setGeometry(100, 100, 1280, 720);
-    window.show();
+    // Create main widget
+    QWidget mainWidget;
+    mainWidget.setWindowTitle("VLC Wayland Player");
+    mainWidget.resize(800, 600);
+    
+    // Create layout
+    QVBoxLayout *layout = new QVBoxLayout(&mainWidget);
+    
+    // Add video widget
+    VideoWidget *videoWidget = new VideoWidget(app.arguments().at(1));
+    layout->addWidget(videoWidget);
+    
+    mainWidget.show();
 
     return app.exec();
 }
