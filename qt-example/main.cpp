@@ -39,6 +39,18 @@ protected:
         }
     }
 
+    void mouseDoubleClickEvent(QMouseEvent *event) override {
+        QWidget *topLevel = window();
+        if (topLevel->isFullScreen()) {
+            topLevel->showNormal();
+            std::cout << "back to normal screen" << std::endl;
+            topLevel->resize(800, 800);
+        } else {
+            topLevel->showFullScreen();
+        }
+        QWidget::mouseDoubleClickEvent(event);
+    }
+
 private:
     void initializeVLC() {
         // Get the QWindow handle from this widget
@@ -102,10 +114,12 @@ int main(int argc, char *argv[])
     
     // Create layout
     QVBoxLayout *layout = new QVBoxLayout(&mainWidget);
-    
+    layout->setContentsMargins(0, 0, 0, 0);
+    // layout->setSpacing(0);  
     // Add video widget
     VideoWidget *videoWidget = new VideoWidget(app.arguments().at(1));
     layout->addWidget(videoWidget);
+
     
     mainWidget.show();
 
