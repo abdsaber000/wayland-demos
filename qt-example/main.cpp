@@ -34,6 +34,8 @@ protected:
 
     void resizeEvent(QResizeEvent *event) override {
         QWidget::resizeEvent(event);
+        std::cout << "Resize to " << width() 
+            << "x" << height() << std::endl; 
         if (m_player) {
             m_player->set_size(width(), height());
         }
@@ -43,12 +45,10 @@ protected:
         QWidget *topLevel = window();
         if (topLevel->isFullScreen()) {
             topLevel->showNormal();
-            std::cout << "back to normal screen" << std::endl;
-            topLevel->resize(800, 800);
         } else {
             topLevel->showFullScreen();
         }
-        QWidget::mouseDoubleClickEvent(event);
+        event->accept();
     }
 
 private:
@@ -84,6 +84,10 @@ private:
             .height = height()
         });
         m_player->play();
+
+        QTimer::singleShot(500, this, [this]() {
+            // just wait
+        });
         m_player->set_size(width(), height());
         
         m_initialized = true;
@@ -114,13 +118,12 @@ int main(int argc, char *argv[])
     
     // Create layout
     QVBoxLayout *layout = new QVBoxLayout(&mainWidget);
-    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setContentsMargins(0, 0, 0, 1);
     // layout->setSpacing(0);  
     // Add video widget
     VideoWidget *videoWidget = new VideoWidget(app.arguments().at(1));
     layout->addWidget(videoWidget);
 
-    
     mainWidget.show();
 
     return app.exec();
