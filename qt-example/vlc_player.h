@@ -29,7 +29,7 @@ void set_callbacks(void* data,
     report_size_change = report_size_change_;
     opaque = reportOpaqu;
     printf("report opaque %p\n", reportOpaqu);
-    
+    report_size_change(opaque, 800, 600); 
 }
 
 class VlcPlayer {

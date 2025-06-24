@@ -16,6 +16,7 @@ public:
     {
         // Ensure we have a native window
         setAttribute(Qt::WA_NativeWindow);
+        setAttribute(Qt::WA_DontCreateNativeAncestors);
     }
 
     ~VideoWidget() {
@@ -84,11 +85,6 @@ private:
             .height = height()
         });
         m_player->play();
-
-        QTimer::singleShot(500, this, [this]() {
-            // just wait
-        });
-        m_player->set_size(width(), height());
         
         m_initialized = true;
     }
@@ -118,7 +114,7 @@ int main(int argc, char *argv[])
     
     // Create layout
     QVBoxLayout *layout = new QVBoxLayout(&mainWidget);
-    layout->setContentsMargins(0, 0, 0, 1);
+    layout->setContentsMargins(0, 0, 0, 0);
     // layout->setSpacing(0);  
     // Add video widget
     VideoWidget *videoWidget = new VideoWidget(app.arguments().at(1));
