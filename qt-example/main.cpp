@@ -46,7 +46,6 @@ protected:
         QWidget *topLevel = window();
         if (topLevel->isFullScreen()) {
             topLevel->showNormal();
-            QTimer::singleShot(100, this, &VideoWidget::refreshSubsurface);
         } else {
             topLevel->showFullScreen();
         }
@@ -54,31 +53,6 @@ protected:
     }
 
 private:
-
-    void refreshSubsurface() {
-        if (!m_player) return;
-
-        QWindow *window = this->windowHandle();
-        if (!window) return;
-
-        window->requestUpdate();
-        
-        QPlatformNativeInterface *native = 
-            QGuiApplication::platformNativeInterface();
-        
-        wl_display *display = static_cast<wl_display*>(
-            native->nativeResourceForIntegration("wl_display"));
-        
-        wl_surface *surface = static_cast<wl_surface*>(
-            native->nativeResourceForWindow("surface", window));
-
-        if (surface) {
-            wl_surface_commit(surface);
-            wl_display_flush(display);
-            
-            m_player->set_size(width(), height());
-        }
-    }
 
     void initializeVLC() {
         // Get the QWindow handle from this widget
