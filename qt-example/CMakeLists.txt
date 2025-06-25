@@ -23,6 +23,13 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(VLC REQUIRED libvlc)
 find_package(Wayland REQUIRED)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
+
+include_directories(${WAYLAND_CLIENT_INCLUDE_DIRS})
+link_directories(${WAYLAND_CLIENT_LIBRARY_DIRS})
+
+
 include_directories(
     ${VLC_INCLUDE_DIRS}
 )
@@ -36,6 +43,7 @@ target_link_libraries(${PROJECT_NAME}
     Qt6::Gui
     Qt6::Widgets
     ${VLC_LIBRARIES}
+    ${WAYLAND_CLIENT_LIBRARIES}
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
