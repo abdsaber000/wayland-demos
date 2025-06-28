@@ -28,7 +28,6 @@ void set_callbacks(void* data,
         void* reportOpaqu) {
     report_size_change = report_size_change_;
     opaque = reportOpaqu;
-    printf("report opaque %p\n", reportOpaqu);
     report_size_change(opaque, 800, 600); 
 }
 
@@ -45,11 +44,6 @@ public:
     }
 
     void set_render_window(const RenderParams &params) {
-        std::cout << "Setting render window with display: " 
-                  << params.display << ", surface: " 
-                  << params.surface << ", width: " 
-                  << params.width << ", height: " 
-                  << params.height << std::endl;
         libvlc_media_player_set_wayland_surface(m_mp, 
             params.display, params.surface, set_callbacks);
     }

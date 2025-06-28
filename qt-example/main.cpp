@@ -14,7 +14,6 @@ public:
     explicit VideoWidget(const QString &mediaPath, QWidget *parent = nullptr)
         : QWidget(parent), m_mediaPath(mediaPath)
     {
-        // Ensure we have a native window
         setAttribute(Qt::WA_NativeWindow);
         setAttribute(Qt::WA_DontCreateNativeAncestors);
     }
@@ -35,8 +34,6 @@ protected:
 
     void resizeEvent(QResizeEvent *event) override {
         QWidget::resizeEvent(event);
-        std::cout << "Resize to " << width() 
-            << "x" << height() << std::endl; 
         if (m_player) {
             m_player->set_size(width(), height());
         }
@@ -55,7 +52,6 @@ protected:
 private:
 
     void initializeVLC() {
-        // Get the QWindow handle from this widget
         QWindow *window = this->windowHandle();
         if (!window) {
             qFatal("Failed to get window handle");
@@ -70,7 +66,6 @@ private:
         wl_surface *surface = static_cast<wl_surface*>(
             native->nativeResourceForWindow("surface", window));
 
-        std::cout << "Display: " << display << " Surface: " << surface << std::endl;
         
         if (!display || !surface) {
             qFatal("Failed to get Wayland resources");
@@ -96,9 +91,7 @@ private:
 
 int main(int argc, char *argv[])
 {
-    // Set Wayland environment
     qputenv("QT_QPA_PLATFORM", "wayland");
-    // qputenv("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1");
     
     QApplication app(argc, argv);
 
@@ -107,16 +100,13 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Create main widget
     QWidget mainWidget;
     mainWidget.setWindowTitle("VLC Wayland Player");
     mainWidget.resize(800, 600);
     
-    // Create layout
     QVBoxLayout *layout = new QVBoxLayout(&mainWidget);
     layout->setContentsMargins(0, 0, 0, 0);
-    // layout->setSpacing(0);  
-    // Add video widget
+
     VideoWidget *videoWidget = new VideoWidget(app.arguments().at(1));
     layout->addWidget(videoWidget);
 
